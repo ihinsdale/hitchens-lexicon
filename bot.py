@@ -2,10 +2,12 @@ from __future__ import division
 import psycopg2
 from nltk import sent_tokenize
 from nltk.probability import FreqDist
-from lxml import etree
+import lxml.html
 import urllib2
-import keys
 import math
+import json
+import re
+import io
 
 # Connect to db
 conn = psycopg2.connect(host="127.0.0.1",database="hitch")
@@ -46,63 +48,86 @@ lowered_hapaxes = fdist_lowered.hapaxes()
 lowered_hapax_dict = {}
 for lowered_hapax in lowered_hapaxes:
     lowered_hapax_dict[lowered_hapax] = True
+tmp_hapaxes = [] # necessary because removing from hapaxes while looping through it caused subtle bug
 for hapax in hapaxes:
     # Remove hapaxes which are only hapaxes because of capitalization
-    if hapax.lower() not in lowered_hapax_dict:
-        hapaxes.remove(hapax)
+    if hapax.lower() in lowered_hapax_dict:
+        tmp_hapaxes.append(hapax)
+hapaxes = tmp_hapaxes
+
 print('Number of hapaxes after trimming: ' + str(len(hapaxes)))
 
-def ask_merriam_webster(word):
-    url = 'http://www.dictionaryapi.com/api/v1/references/collegiate/xml/' + hapax + '?key=' + merriam_webster_key
-    request = urllib2.Request(url)
-    response = urllib2.urlopen(request)
-    xml = response.read()
-    root = etree.fromstring(xml)
-    return root.find('entry')
+def ascii_replace(match):
+  s = match.group()  
+  return '\\u00' + match.group()[2:]
 
-def getDefinition(word):
-    definitionXML = ask_merriam_webster(word)
-    if definitionXML is not None:
-        return definitionXML.find('def').find('dt').text[1:]
-    definitionXML = ask_merriam_webster(word.lower())
-    if definitionXML is not None:
-        return definitionXML.find('def').find('dt').text[1:]
+def define(word):
+    try:
+        url = 'http://www.google.com/dictionary/json?callback=a&sl=en&tl=en&q=' + word
+        request = urllib2.Request(url)
+        response = urllib2.urlopen(request)
+        jsonstring = unicode('[' + response.read()[2:-1] + ']', encoding='utf8')
+        # To replace hex characters with ascii characters
+        # HT: http://blog.abhijeetr.com/2011/11/google-dictionary-api-example-in-python.html
+        #response = re.compile(r'\\x(\w{2})')
+        #ascii_string = response.sub(ascii_replace, jsonstring)
+        #data = json.loads(ascii_string)
+        data = json.loads(jsonstring)
+        # Get first definition of the word
+        for entry in data[0]['primaries'][0]['entries']:
+            if entry['type'] == 'meaning':
+                # Clean the definition of any html
+                html = lxml.html.fragment_fromstring('<p>' + entry['terms'][0]['text'] + '</p>')
+                definition = html.text_content()
+                break
+        return definition
+    except:
+       raise ValueError(word + 'is not in dictionary')
+
+def truncate(sentence, keyword_start, max_length):
+    """returns a truncated version of a sentence: only complete words, with ellipses as necessary,
+       and defaults to equal length on either side of keyword in sentence"""
+    length = len(sentence)
+    ellipsis_length = 3
+    max_length_one_ellipsis = max_length - ellipsis_length
+    max_length_two_ellipsis = max_length - 2 * ellipsis_length
+    if length <= max_length:
+        result = sentence
+    elif keyword_start < (max_length_one_ellipsis - len(hapax)) / 2:
+        result = sentence[:sentence.rfind(' ', 0, max_length_one_ellipsis)] + '...'
+    elif length - keyword_start < (max_length_one_ellipsis - len(hapax)) / 2:
+        result = '...' + sentence[sentence.find(' ', length - max_length_one_ellipsis) + 1 :]
     else:
-        raise ValueError(word + 'is not in dictionary')
+        selection_start = sentence.find(' ', int(math.ceil(keyword_start - (max_length_two_ellipsis - len(hapax)) / 2))) + 1
+        selection_end = sentence.rfind(' ', 0, int(math.floor(keyword_start + len(hapax) + (max_length_two_ellipsis - len(hapax)) / 2)))
+        result = '...' + sentence[selection_start:selection_end] + '...'
+    return result
 
 # output hapaxes, the url of the column in which they're used, and the definition to a file
-output = open('hapaxes', 'w')
-merriam_webster_key = keys.dictionary()
-for hapax in hapaxes[5000:5010]:
+output = io.open('hapaxes', 'w', encoding='utf8')
+for hapax in hapaxes:
     try:
-        definition = getDefinition(hapax)
+        full_definition = define(hapax)
+        definition = truncate(full_definition, 0, 103)
         print definition
+        def_url = 'https://www.google.com/#q=define:+' + hapax
         column_sentences = [sent for sent in sent_tokenize(content_dict[source_dict[hapax][0]])]
         sentence = {
             'text': '', 
-            'start': None,
-            'length': None
+            'start': None
         }
         for sent in column_sentences:
             index = sent.find(hapax)
             if index != -1:
                 sentence['text'] = sent
                 sentence['start'] = index
-                sentence['length'] = len(sent)
                 break
-        if sentence['length'] <= 102:
-            hitchtext = sentence['text']
-        elif sentence['start'] < (99 - len(hapax)) / 2:
-            hitchtext = sentence['text'][:sentence['text'].rfind(' ', 0, 99)] + '...'
-        elif sentence['length'] - sentence['start'] < (99 - len(hapax)) / 2:
-            hitchtext = '...' + sentence['text'][sentence['text'].find(' ', sentence['length'] - 99) + 1 :]
-        else:
-            selection_start = sentence['text'].find(' ', math.ceil(sentence['start'] - (96 - len(hapax)) / 2)) + 1
-            selection_end = sentence['text'].rfind(' ', 0, math.floor(sentence['start'] + len(hapax) + (96 - len(hapax)) / 2))
-            hitchtext = '...' + sentence['text'][selection_start:selection_end] + '...'
-        output.write(hapax + '\n' + source_dict[hapax][0] + '\n' + definition + '\n' + hitchtext + '\n')
+        hitchtext = truncate(sentence['text'], sentence['start'], 94)
+        block = unicode(hapax + '\n' + definition + '\n' + def_url + '\n' + hitchtext + '\n' + source_dict[hapax][0] + '\n', encoding='utf8')
+        output.write(block)
+        print hapax
     except ValueError:
-        print 'No definition for: ' + hapax
+       print 'No definition for: ' + hapax
 output.close()
 
 # Close database connection
