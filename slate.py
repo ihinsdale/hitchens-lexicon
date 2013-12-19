@@ -1,13 +1,13 @@
-import psycopg2 # the Python driver for Postgres
+import psycopg2
 import urllib2, urllib, urlparse
 import lxml.html, lxml.cssselect
 from nltk import word_tokenize, sent_tokenize
 
-# connect to database
+# Connect to database
 conn = psycopg2.connect(host="127.0.0.1",database="hitch")
 cur = conn.cursor()
 
-# create list of Slate Hitchens archive page urls
+# Create list of Slate Hitchens archive page urls
 pages = ['']
 for num in range(2, 17):
     pages.append('.' + str(num))
@@ -37,7 +37,7 @@ def date_transform(datetime):
         print 'Error transforming datetime'
         return None
 
-# create list of article urls
+# Create list of article urls
 urls = []
 headers = {'User-Agent' : 'Mozilla 5.10'}
 for page in pages:
@@ -51,7 +51,7 @@ for page in pages:
         urls.append(link[0:-4] + 'single.html') # ensures there is no article pagination
 print urls
 
-# process each article
+# Save each article to the db
 for index, url in enumerate(urls):
     try:
         request = urllib2.Request(url, None, headers)
@@ -70,7 +70,7 @@ for index, url in enumerate(urls):
             # this branching necessary to exclude possible italicized description of the article
                 content += text_content + ' '
         content_tokenized = [word for sent in sent_tokenize(content) for word in word_tokenize(sent)]
-        cur.execute("""INSERT INTO documents (title, subtitle, publication_date, content, content_tokenized) VALUES (%s, %s, %s, %s, %s);""", (title, subtitle, publication_date, content, content_tokenized))
+        cur.execute("""INSERT INTO documents (url, title, subtitle, publication_date, content, content_tokenized) VALUES (%s, %s, %s, %s, %s, %s);""", (url, title, subtitle, publication_date, content, content_tokenized))
         conn.commit()
         print index
     except:
