@@ -1,5 +1,4 @@
 natural language processing of the writings of Christopher Hitchens
-powering [@HitchensHapaxes](https://twitter.com/hitchenshapaxes)
 =================================================================================
 
 ![Hitchens at Victoria Falls](https://raw.github.com/ihinsdale/hitchens-lexicon/master/images/hitchens_at_falls.jpg)
@@ -38,9 +37,12 @@ To complete the collection, his books should also be added. An interesting exten
 
 `bot.py` powers the @HitchensHapaxes Twitter bot. It extracts all of Hitchens' columns from the database, identifies all of the hapaxes, picks a random one, fetches its definition from Google and the context in which Hitchens used it, and tweets.
 
-`tweet.sh` is the script for the executing `bot.py` as a cron job.
+`tweet.sh` is the shell script for the executing `bot.py` as a cron job.
+
+`setup.sh` is the shell script for configuring the Ubuntu 12.04 LTS cloud server on which the bot runs.
 
 The database table in which writings are stored is created with the following command in the `psql` client:
+
     CREATE TABLE documents (id serial primary key, url text, title text, subtitle text, publication_date date, content text, content_tokenized text[]);
 
 ##<a name="stack"></a>Stack
