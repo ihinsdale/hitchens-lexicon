@@ -10,7 +10,7 @@ import re
 import io
 
 # Connect to db
-conn = psycopg2.connect(host="127.0.0.1",database="hitch")
+conn = psycopg2.connect(database="hitch",user="postgres")
 cur = conn.cursor()
 
 # Create corpus
