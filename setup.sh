@@ -3,6 +3,7 @@
 
 sudo apt-get update
 sudo apt-get install screen
+sudo apt-get install unzip
 
 # Install PostgreSQL
 sudo apt-get install postgresql postgresql-contrib
