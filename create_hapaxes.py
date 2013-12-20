@@ -40,11 +40,17 @@ print 'Number of types (words + punctuation) in corpus: ' + str(len(corpus_token
 # Identify hapaxes
 
 # Remove tokens which contain non-ASCII characters
+# or which contain digits
+_digits = re.compile('\d')
+def contains_digits(d):
+    return bool(_digits.search(d))
+
 ascii_tokens = []
 for token in corpus_tokenized:
     try:
         token.decode('ascii')
-        ascii_tokens.append(token)
+        if not contains_digits(token):
+            ascii_tokens.append(token)
     except:
         continue
 
@@ -74,7 +80,8 @@ def asciirepl(match):
 
 def define(word):
     url = 'http://www.google.com/dictionary/json?callback=a&sl=en&tl=en&q=' + word + '&restrict=pr%2Cde&client=te'
-    request = urllib2.Request(url)
+    headers = {'User-Agent' : 'Mozilla 5.10'}
+    request = urllib2.Request(url, None, headers)
     response = urllib2.urlopen(request)
     jsonstring = '[' + response.read()[2:-1] + ']'
     #To replace hex characters with ascii characters
