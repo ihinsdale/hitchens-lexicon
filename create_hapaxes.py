@@ -118,7 +118,7 @@ def truncate(sentence, keyword_start, max_length):
 
 # output hapaxes, the url of the column in which they're used, and the definition to a file
 output = io.open('hapaxes', 'w', encoding='utf8')
-for hapax in hapaxes[3000:3010]:
+for hapax in hapaxes:
     try:
         full_definition = define(hapax)
         definition = truncate(full_definition, 0, 103)
