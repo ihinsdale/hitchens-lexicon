@@ -4,7 +4,7 @@ import lxml.html, lxml.cssselect
 from nltk import word_tokenize, sent_tokenize
 
 # Connect to database
-conn = psycopg2.connect(host="127.0.0.1",database="hitch")
+conn = psycopg2.connect(host="localhost",database="hitch")
 cur = conn.cursor()
 
 # Create list of Slate Hitchens archive page urls

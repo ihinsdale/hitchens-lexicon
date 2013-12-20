@@ -15,6 +15,7 @@ sudo apt-get install python-dev
 sudo apt-get install python-psycopg2
 sudo apt-get install libxml2-dev libxslt-dev
 sudo pip install lxml
+sudo pip install cssselect
 
 sudo pip install -U numpy
 sudo pip install -U pyyaml nltk
