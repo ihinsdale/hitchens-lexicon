@@ -37,7 +37,7 @@ To complete the collection, his books should also be added. An interesting exten
 
 `bot.py` powers the @HitchensHapaxes Twitter bot. It extracts all of Hitchens' columns from the database, identifies all of the hapaxes, picks a random one, fetches its definition from Google and the context in which Hitchens used it, and tweets.
 
-`tweet.sh` is the shell script for the executing `bot.py` as a cron job.
+`tweet.sh` is the shell script for executing `bot.py` as a cron job.
 
 `setup.sh` is the shell script for configuring the Ubuntu 12.04 LTS cloud server on which the bot runs.
 
